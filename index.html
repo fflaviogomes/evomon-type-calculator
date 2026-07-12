@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evomon Dual-Way Type Effectiveness Calculator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1, h2 { 
+            text-align: center; 
+            color: #fff; 
+        }
+
+        .container {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .selector-group {
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .select-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        select {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background-color: #2a2a2a;
+            color: #fff;
+            font-size: 12pt;
+            cursor: pointer;
+
+        }
+
+        .panels-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .panels-grid { grid-template-columns: 1fr; }
+        }
+        .column-title {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+        .results-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .result-row {
+            background-color: #262626;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 5px solid #555;
+        }
+
+        .x4 { border-left-color: #f55; }
+        .x2 { border-left-color: #faa; }
+        .x1 { border-left-color: #ddd; } 
+        .x05 { border-left-color: #9cf; }
+        .x025 { border-left-color: #4af; }
+        .x0 { border-left-color: #fff; }
+
+        .wiki-link {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 10pt;
+        }
+        .wiki-link a {
+            color: #82cfff;
+            text-decoration: none;
+        }
+
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 11pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .badge-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .type-badge {
+            padding: 4px;
+            padding-right: 10px;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 9pt;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            text-transform: uppercase;
+            min-width: 85px;
+        }
+
+        .badge-source {
+            display: block;
+            font-size: 6pt;
+            font-weight: normal;
+            margin-left: 4px;
+            text-align: right;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Evomon Battle Type Calculator</h1>
+    <p class="wiki-link">Reference: <a href="https://evomon.wiki/type-chart" target="_blank" rel="noopener noreferrer">evomon.wiki</a></p>
+    <div class="container">
+        <div class="selector-group">
+            <div class="select-wrapper">
+                <label for="type1">Primary Type</label>
+                <select id="type1" onchange="calculateAll()"></select>
+            </div>
+            <div class="select-wrapper">
+                <label for="type2">Secondary Type</label>
+                <select id="type2" onchange="calculateAll()">
+                    <option value="None">None (Pure Type)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="panels-grid">
+            <div>
+                <h3 class="column-title">🛡️ Defense (Incoming Damage)</h3>
+                <div class="results-section" id="defense-results"></div>
+            </div>
+
+            <div>
+                <h3 class="column-title">⚔️ Offense (Your Attacks)</h3>
+                <div class="results-section" id="offense-results"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Dataset 1: type metadata (unique primary key = type name)
+    const typeCatalog = [
+        { type: 'Normal', color: '#A8A77A', icon: '⚪' },
+        { type: 'Fire', color: '#EE8130', icon: '🔥' },
+        { type: 'Water', color: '#6390F0', icon: '🌊' },
+        { type: 'Grass', color: '#7AC74C', icon: '🌿' },
+        { type: 'Electric', color: '#F7D02C', icon: '⚡' },
+        { type: 'Ice', color: '#96D9D6', icon: '❄️' },
+        { type: 'Fighting', color: '#C22E28', icon: '🥊' },
+        { type: 'Poison', color: '#A33EA1', icon: '☠️' },
+        { type: 'Ground', color: '#E2BF65', icon: '🟫' },
+        { type: 'Flying', color: '#A98FF3', icon: '🪽' },
+        { type: 'Psychic', color: '#F95587', icon: '🔮' },
+        { type: 'Bug', color: '#A6B91A', icon: '🐛' },
+        { type: 'Rock', color: '#B6A136', icon: '🪨' },
+        { type: 'Steel', color: '#B7B7CE', icon: '⚙️' },
+        { type: 'Dragon', color: '#6F35FC', icon: '🐉' },
+        { type: 'Light', color: '#F5D6A1', icon: '⭐' },
+        { type: 'Dark', color: '#705746', icon: '🌘' }
+    ];
+
+    // Dataset 2: matchup rows (type being attacked, effectiveness)
+    const matchupTable = [
+        { type: 'Normal', matchup: 'Steel', effectiveness: 0.5 },
+        { type: 'Fire', matchup: 'Water', effectiveness: 0.5 },
+        { type: 'Fire', matchup: 'Grass', effectiveness: 2 },
+        { type: 'Fire', matchup: 'Ice', effectiveness: 2 },
+        { type: 'Fire', matchup: 'Ground', effectiveness: 0.5 },
+        { type: 'Fire', matchup: 'Bug', effectiveness: 2 },
+        { type: 'Fire', matchup: 'Rock', effectiveness: 0.5 },
+        { type: 'Fire', matchup: 'Steel', effectiveness: 2 },
+        { type: 'Fire', matchup: 'Dragon', effectiveness: 0.5 },
+        { type: 'Water', matchup: 'Fire', effectiveness: 2 },
+        { type: 'Water', matchup: 'Grass', effectiveness: 0.5 },
+        { type: 'Water', matchup: 'Ice', effectiveness: 0.5 },
+        { type: 'Water', matchup: 'Ground', effectiveness: 2 },
+        { type: 'Water', matchup: 'Bug', effectiveness: 0.5 },
+        { type: 'Water', matchup: 'Rock', effectiveness: 2 },
+        { type: 'Water', matchup: 'Dragon', effectiveness: 0.5 },
+        { type: 'Grass', matchup: 'Fire', effectiveness: 0.5 },
+        { type: 'Grass', matchup: 'Water', effectiveness: 2 },
+        { type: 'Grass', matchup: 'Poison', effectiveness: 0.5 },
+        { type: 'Grass', matchup: 'Ground', effectiveness: 2 },
+        { type: 'Grass', matchup: 'Flying', effectiveness: 0.5 },
+        { type: 'Grass', matchup: 'Bug', effectiveness: 0.5 },
+        { type: 'Grass', matchup: 'Rock', effectiveness: 2 },
+        { type: 'Grass', matchup: 'Dragon', effectiveness: 0.5 },
+        { type: 'Electric', matchup: 'Water', effectiveness: 2 },
+        { type: 'Electric', matchup: 'Grass', effectiveness: 0.5 },
+        { type: 'Electric', matchup: 'Ground', effectiveness: 0.5 },
+        { type: 'Electric', matchup: 'Flying', effectiveness: 2 },
+        { type: 'Electric', matchup: 'Steel', effectiveness: 2 },
+        { type: 'Electric', matchup: 'Dragon', effectiveness: 0.5 },
+        { type: 'Ice', matchup: 'Fire', effectiveness: 0.5 },
+        { type: 'Ice', matchup: 'Grass', effectiveness: 2 },
+        { type: 'Ice', matchup: 'Ice', effectiveness: 0.5 },
+        { type: 'Ice', matchup: 'Ground', effectiveness: 2 },
+        { type: 'Ice', matchup: 'Flying', effectiveness: 2 },
+        { type: 'Ice', matchup: 'Steel', effectiveness: 0.5 },
+        { type: 'Ice', matchup: 'Dragon', effectiveness: 2 },
+        { type: 'Fighting', matchup: 'Normal', effectiveness: 2 },
+        { type: 'Fighting', matchup: 'Ice', effectiveness: 2 },
+        { type: 'Fighting', matchup: 'Poison', effectiveness: 0.5 },
+        { type: 'Fighting', matchup: 'Flying', effectiveness: 0.5 },
+        { type: 'Fighting', matchup: 'Psychic', effectiveness: 0.5 },
+        { type: 'Fighting', matchup: 'Bug', effectiveness: 0.5 },
+        { type: 'Fighting', matchup: 'Rock', effectiveness: 2 },
+        { type: 'Fighting', matchup: 'Steel', effectiveness: 2 },
+        { type: 'Poison', matchup: 'Grass', effectiveness: 2 },
+        { type: 'Poison', matchup: 'Ground', effectiveness: 0.5 },
+        { type: 'Poison', matchup: 'Flying', effectiveness: 2 },
+        { type: 'Poison', matchup: 'Steel', effectiveness: 0.5 },
+        { type: 'Poison', matchup: 'Dragon', effectiveness: 2 },
+        { type: 'Ground', matchup: 'Fire', effectiveness: 2 },
+        { type: 'Ground', matchup: 'Grass', effectiveness: 0.5 },
+        { type: 'Ground', matchup: 'Electric', effectiveness: 2 },
+        { type: 'Ground', matchup: 'Poison', effectiveness: 2 },
+        { type: 'Ground', matchup: 'Flying', effectiveness: 0.5 },
+        { type: 'Ground', matchup: 'Dragon', effectiveness: 2 },
+        { type: 'Flying', matchup: 'Grass', effectiveness: 2 },
+        { type: 'Flying', matchup: 'Electric', effectiveness: 0.5 },
+        { type: 'Flying', matchup: 'Fighting', effectiveness: 2 },
+        { type: 'Flying', matchup: 'Ground', effectiveness: 2 },
+        { type: 'Flying', matchup: 'Bug', effectiveness: 2 },
+        { type: 'Flying', matchup: 'Rock', effectiveness: 0.5 },
+        { type: 'Flying', matchup: 'Steel', effectiveness: 0.5 },
+        { type: 'Flying', matchup: 'Dragon', effectiveness: 0.5 },
+        { type: 'Psychic', matchup: 'Normal', effectiveness: 0.5 },
+        { type: 'Psychic', matchup: 'Fighting', effectiveness: 2 },
+        { type: 'Psychic', matchup: 'Poison', effectiveness: 2 },
+        { type: 'Psychic', matchup: 'Flying', effectiveness: 2 },
+        { type: 'Psychic', matchup: 'Steel', effectiveness: 0.5 },
+        { type: 'Bug', matchup: 'Fire', effectiveness: 0.5 },
+        { type: 'Bug', matchup: 'Grass', effectiveness: 2 },
+        { type: 'Bug', matchup: 'Poison', effectiveness: 0.5 },
+        { type: 'Bug', matchup: 'Flying', effectiveness: 0.5 },
+        { type: 'Bug', matchup: 'Psychic', effectiveness: 2 },
+        { type: 'Bug', matchup: 'Steel', effectiveness: 0.5 },
+        { type: 'Rock', matchup: 'Fire', effectiveness: 2 },
+        { type: 'Rock', matchup: 'Grass', effectiveness: 0.5 },
+        { type: 'Rock', matchup: 'Electric', effectiveness: 2 },
+        { type: 'Rock', matchup: 'Ice', effectiveness: 2 },
+        { type: 'Rock', matchup: 'Fighting', effectiveness: 0.5 },
+        { type: 'Rock', matchup: 'Poison', effectiveness: 2 },
+        { type: 'Rock', matchup: 'Ground', effectiveness: 0.5 },
+        { type: 'Steel', matchup: 'Fire', effectiveness: 0.5 },
+        { type: 'Steel', matchup: 'Water', effectiveness: 0.5 },
+        { type: 'Steel', matchup: 'Electric', effectiveness: 0.5 },
+        { type: 'Steel', matchup: 'Ice', effectiveness: 2 },
+        { type: 'Steel', matchup: 'Rock', effectiveness: 2 },
+        { type: 'Dragon', matchup: 'Steel', effectiveness: 0.5 },
+        { type: 'Dragon', matchup: 'Dragon', effectiveness: 2 },
+
+        { type: 'Normal', matchup: 'Dark', effectiveness: 0.5 },
+        { type: 'Fire', matchup: 'Light', effectiveness: 0.5 },
+        { type: 'Grass', matchup: 'Light', effectiveness: 2 },
+        { type: 'Electric', matchup: 'Light', effectiveness: 0.5 },
+        { type: 'Bug', matchup: 'Dark', effectiveness: 2 },
+        { type: 'Psychic', matchup: 'Light', effectiveness: 0.5 },
+        { type: 'Poison', matchup: 'Dark', effectiveness: 0.5 },
+
+    ];
+
+    const typeDB = Object.fromEntries(
+        typeCatalog.map(({ type, color, icon }) => [type, { color, icon, effectiveness: {} }])
+    );
+
+    matchupTable.forEach(({ type, matchup, effectiveness }) => {
+        if (typeDB[type]) {
+            typeDB[type].effectiveness[matchup] = effectiveness;
+        }
+    });
+
+    const types = Object.keys(typeDB);
+
+    const t1Select = document.getElementById('type1');
+    const t2Select = document.getElementById('type2');
+    
+    types.forEach(type => {
+        let opt1 = document.createElement('option');
+        opt1.value = opt1.innerText = type;
+        t1Select.appendChild(opt1);
+
+        let opt2 = document.createElement('option');
+        opt2.value = opt2.innerText = type;
+        t2Select.appendChild(opt2);
+    });
+
+    function getEffectiveness(attackType, defenseType) {
+        if (!typeDB[attackType] || typeDB[attackType].effectiveness[defenseType] === undefined) return 1;
+        return typeDB[attackType].effectiveness[defenseType];
+    }
+
+    function calculateAll() {
+        const t1 = t1Select.value;
+        const t2 = t2Select.value;
+
+        // --- DEFENSE CALCULATION ---
+        const defMap = { 4: [], 2: [], 1: [], 0: [], 0.5: [], 0.25: [] };
+        types.forEach(attacker => {
+            let mult = getEffectiveness(attacker, t1);
+            if (t2 !== "None" && t1 !== t2) {
+                mult *= getEffectiveness(attacker, t2);
+            }
+            if (defMap[mult]) defMap[mult].push({ name: attacker });
+        });
+
+        // --- OFFENSE CALCULATION ---
+        const offMap = { 2: [], 1: [], 0.5: [], 0: [] };
+        
+        // Track the best multiplier per opposing type depending on which of your active elements hits harder
+        types.forEach(target => {
+            let mult1 = getEffectiveness(t1, target);
+            let mult2 = (t2 !== "None" && t1 !== t2) ? getEffectiveness(t2, target) : 0;
+            
+            if (t2 === "None" || t1 === t2) {
+                if (offMap[mult1]) offMap[mult1].push({ name: target, src: t1 });
+            } else {
+                // If dual type, map the matchup depending on which of your moves handles it better
+                if (mult1 >= mult2) {
+                    if (offMap[mult1]) offMap[mult1].push({ name: target, src: t1 });
+                } else {
+                    if (offMap[mult2]) offMap[mult2].push({ name: target, src: t2 });
+                }
+            }
+        });
+
+        displaySection('defense-results', defMap, true);
+        displaySection('offense-results', offMap, false);
+    }
+
+    function displaySection(elementId, map, isDefense) {
+        const resultsDiv = document.getElementById(elementId);
+        resultsDiv.innerHTML = '';
+
+        const rows = isDefense ? [
+            { key: 4, label: 'Takes 4x (Double Weakness)', class: 'x4' },
+            { key: 2, label: 'Takes 2x (Weakness)', class: 'x2' },
+            { key: 1, label: 'Takes 1x (Normal)', class: 'x1' },
+            { key: 0, label: 'Takes 0 (Immune)', class: 'x0'},
+            { key: 0.5, label: 'Takes 0.5x (Resistance)', class: 'x05' },
+            { key: 0.25, label: 'Takes 0.25x (Double Resistance)', class: 'x025' }
+        ] : [
+            { key: 2, label: 'Deals 2x (Super Effective)', class: 'x2' },
+            { key: 1, label: 'Deals 1x (Normal Damage)', class: 'x1' },
+            { key: 0, label: 'Deals 0 (No effect)', class: 'x0'},
+            { key: 0.5, label: 'Deals 0.5x (Not Very Effective)', class: 'x05' }
+        ];
+
+        rows.forEach(row => {
+            if (map[row.key] && map[row.key].length > 0) {
+                const rowEl = document.createElement('div');
+                rowEl.className = `result-row ${row.class}`;
+                
+                const title = document.createElement('div');
+                title.className = 'row-title';
+                title.innerText = row.label;
+                rowEl.appendChild(title);
+
+                const badges = document.createElement('div');
+                badges.className = 'badge-container';
+
+                map[row.key].forEach(item => {
+                    const badge = document.createElement('span');
+                    badge.className = 'type-badge';
+                    badge.classList.add(`type-${item.name.toLowerCase()}`);
+                    badge.style.backgroundColor = typeDB[item.name].color;
+
+                    if(!isDefense && item.src) {
+                        badge.innerHTML = `${typeDB[item.name].icon} ${item.name} <span class="badge-source">(via ${item.src})</span>`;
+                    } else {
+                        badge.innerHTML = `${typeDB[item.name].icon} ${item.name}`;
+                    }
+                    
+                    badges.appendChild(badge);
+                });
+
+                rowEl.appendChild(badges);
+                resultsDiv.appendChild(rowEl);
+            }
+        });
+    }
+
+    calculateAll();
+</script>
+</body>
+</html>
